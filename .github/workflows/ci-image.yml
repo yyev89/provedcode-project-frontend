@@ -5,16 +5,17 @@ on:
     branches:
       - "main"
   pull_request:
-    branches:
-      - "main"
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:
-  build-test:
+  test:
+    name: Test with NPM
     runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Nodejs
       uses: actions/setup-node@v4
       with:
@@ -25,19 +26,34 @@ jobs:
       
     - name: Test with npm
       run: npm test
-      
+
+  sonarcloud-scan:
+    name: Analyze code with Sonar
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Cloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
   docker-image:
+    name: Build and push Docker image
     runs-on: ubuntu-22.04
     permissions:
       packages: write
-    needs: build-test
+    needs: [test, sonarcloud-scan]
 
     steps:
       - name: Set image tag as short SHA
         id: tags
         run: echo "image_tag=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: Login to gitHub container registry
+      - name: Login to GitHub container registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
