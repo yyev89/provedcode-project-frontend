@@ -27,26 +27,37 @@ jobs:
     - name: Test with npm
       run: npm test
 
-  sonarcloud-scan:
-    name: Analyze code with Sonar
+
+  qodana:
+    name: Scan code with Qodana
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: SonarQube Cloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: 'Qodana Scan'
+        uses: JetBrains/qodana-action@v2024.2
+        with:
+          args: --linter,jetbrains/qodana-js:2024.2
+          pr-mode: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+          QODANA_ENDPOINT: 'https://qodana.cloud'
+
 
   docker-image:
     name: Build and push Docker image
     runs-on: ubuntu-22.04
     permissions:
       packages: write
-    needs: [test, sonarcloud-scan]
+    needs: [test, qodana]
 
     steps:
       - name: Set image tag as short SHA
