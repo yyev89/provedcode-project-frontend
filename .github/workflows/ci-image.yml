@@ -100,3 +100,15 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ needs.generate-image-tag.outputs.image_tag }}
+
+      - name: Update image tag in the infrastructure repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.INFRA_PAT }}
+          repository: yyev89/provedcode-project-infrastructure
+          event-type: frontend_image_tag
+          client-payload: |-
+            {
+              "repo": "${{ github.repository }}",
+              "image_tag": "${{ needs.generate-image-tag.outputs.image_tag }}"
+            }
